@@ -15,13 +15,13 @@ A beautiful, interactive ring customization widget built with Lit web components
 
 ## Live Demo
 
-[View Live Demo](https://yourusername.github.io/RingBuilder/)
+[View Live Demo](https://malindaushan999.github.io/RingBuilder/)
 
 ## Local Development
 
 1. Clone the repository:
 ```bash
-git clone https://github.com/yourusername/RingBuilder.git
+git clone https://github.com/malindaushan999/RingBuilder.git
 cd RingBuilder
 ```
 
