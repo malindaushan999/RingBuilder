@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script type="module" src="ring-builder-widget.js"></script>
+    <title>Ring Builder - Design Your Perfect Ring</title>
+    <style>
+        * {
+            margin: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .container {
+            max-width: 1200px;
+            width: 100%;
+        }
+
+        header {
+            text-align: center;
+            color: white;
+            margin-bottom: 40px;
+        }
+
+        h1 {
+            font-size: 3em;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+            letter-spacing: 2px;
+        }
+
+        .subtitle {
+            font-size: 1.2em;
+            opacity: 0.95;
+            margin-bottom: 20px;
+        }
+
+        .hero-image {
+            width: 100%;
+            max-width: 600px;
+            height: 200px;
+            margin: 0 auto 30px;
+            background: linear-gradient(45deg, rgba(255,255,255,0.1), rgba(255,255,255,0.2)),
+                        url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 100"><defs><radialGradient id="grad" cx="50%" cy="50%" r="50%"><stop offset="0%" style="stop-color:rgb(255,255,255);stop-opacity:0.9" /><stop offset="100%" style="stop-color:rgb(200,200,255);stop-opacity:0.3" /></radialGradient></defs><polygon points="100,20 120,40 140,35 130,55 145,70 120,65 100,80 80,65 55,70 70,55 60,35 80,40" fill="url(%23grad)" stroke="white" stroke-width="2"/><circle cx="100" cy="50" r="8" fill="white" opacity="0.8"/></svg>');
+            background-size: contain;
+            background-position: center;
+            background-repeat: no-repeat;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+        }
+
+        .widget-wrapper {
+            display: flex;
+            justify-content: center;
+            margin-bottom: 30px;
+            padding: 0 20px;
+        }
+
+        ring-builder {
+            width: 100%;
+            max-width: 550px;
+        }
+
+        .success-message {
+            background: rgba(255,255,255,0.95);
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+            display: none;
+            margin: 20px auto;
+            max-width: 500px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+        }
+
+        .success-message.show {
+            display: block;
+            animation: slideIn 0.3s ease-out;
+        }
+
+        @keyframes slideIn {
+            from {
+                transform: translateY(-20px);
+                opacity: 0;
+            }
+            to {
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
+
+        .success-icon {
+            font-size: 3em;
+            margin-bottom: 10px;
+        }
+
+        footer {
+            text-align: center;
+            color: white;
+            opacity: 0.8;
+            margin-top: 40px;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <header>
+            <h1>💎 Ring Builder</h1>
+            <p class="subtitle">Design Your Perfect Ring</p>
+        </header>
+
+        <div class="widget-wrapper">
+            <ring-builder id="my-ring-widget"></ring-builder>
+        </div>
+
+        <div class="success-message" id="success-message">
+            <div class="success-icon">✨</div>
+            <h2>Added to Cart!</h2>
+            <p id="cart-details"></p>
+        </div>
+
+        <footer>
+            <p>&copy; 2025 Ring Builder - Crafting Dreams into Reality</p>
+        </footer>
+    </div>
+
+    <script>
+        document.getElementById('my-ring-widget')
+            .addEventListener('add-to-cart', e => {
+                console.log('Received add-to-cart:', e.detail);
+                
+                // Show success message
+                const message = document.getElementById('success-message');
+                const details = document.getElementById('cart-details');
+                details.innerHTML = `
+                    <strong>${e.detail.ringType.charAt(0).toUpperCase() + e.detail.ringType.slice(1)} Ring</strong><br>
+                    ${e.detail.shape.charAt(0).toUpperCase() + e.detail.shape.slice(1)} Cut, ${e.detail.carat}ct, Color ${e.detail.color}<br>
+                    <strong>Price: $${e.detail.price.toFixed(2)}</strong>
+                `;
+                message.classList.add('show');
+                
+                setTimeout(() => {
+                    message.classList.remove('show');
+                }, 4000);
+            });
+    </script>
+</body>
+
+</html>
