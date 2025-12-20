@@ -143,16 +143,29 @@
                 // Show success message
                 const message = document.getElementById('success-message');
                 const details = document.getElementById('cart-details');
+                
+                const currencySymbols = {
+                    'USD': '$',
+                    'EUR': '€',
+                    'GBP': '£',
+                    'AUD': 'A$',
+                    'CAD': 'C$'
+                };
+                
+                const symbol = currencySymbols[e.detail.currency] || '$';
+                
                 details.innerHTML = `
                     <strong>${e.detail.ringType.charAt(0).toUpperCase() + e.detail.ringType.slice(1)} Ring</strong><br>
-                    ${e.detail.shape.charAt(0).toUpperCase() + e.detail.shape.slice(1)} Cut, ${e.detail.carat}ct, Color ${e.detail.color}<br>
-                    <strong>Price: $${e.detail.price.toFixed(2)}</strong>
+                    ${e.detail.shape.charAt(0).toUpperCase() + e.detail.shape.slice(1)}, ${e.detail.carat}ct, ${e.detail.color} Color, ${e.detail.clarity} Clarity<br>
+                    ${e.detail.cut} Cut • ${e.detail.setting.replace('-', ' ').replace(/\b\w/g, l => l.toUpperCase())} Setting<br>
+                    ${e.detail.metalType.replace('-', ' ').replace(/\b\w/g, l => l.toUpperCase())} Metal<br>
+                    <strong>Price: ${symbol}${e.detail.price.toFixed(2)}</strong>
                 `;
                 message.classList.add('show');
                 
                 setTimeout(() => {
                     message.classList.remove('show');
-                }, 4000);
+                }, 5000);
             });
     </script>
 </body>
