@@ -9,7 +9,9 @@ class RingBuilder extends LitElement {
       carat:    { type: Number },
       color:    { type: String },
       metalColor: { type: String },
-      price:    { type: Number }
+      price:    { type: Number },
+      draggedItem: { type: Object },
+      dropZoneActive: { type: Boolean }
     };
   }
 
@@ -21,6 +23,8 @@ class RingBuilder extends LitElement {
     this.color    = 'E';
     this.metalColor = '#FFD700';
     this.price    = 0;
+    this.draggedItem = null;
+    this.dropZoneActive = false;
   }
 
   static styles = css`
@@ -64,10 +68,18 @@ class RingBuilder extends LitElement {
       width: 50px;
       height: 50px;
       border-radius: 50%;
-      cursor: pointer;
+      cursor: grab;
       border: 3px solid #e0e0e0;
       transition: all 0.3s ease;
       box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+      user-select: none;
+    }
+    .color-option:active {
+      cursor: grabbing;
+    }
+    .color-option.dragging {
+      opacity: 0.5;
+      transform: scale(0.9);
     }
     .color-option:hover {
       transform: scale(1.1);
@@ -120,6 +132,27 @@ class RingBuilder extends LitElement {
       border-radius: 15px;
       position: relative;
       box-shadow: 0 10px 30px rgba(102, 126, 234, 0.3);
+      transition: all 0.3s ease;
+    }
+    .preview.drop-active {
+      border: 3px dashed white;
+      box-shadow: 0 10px 40px rgba(102, 126, 234, 0.6), inset 0 0 30px rgba(255, 255, 255, 0.2);
+      transform: scale(1.02);
+    }
+    .drop-hint {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      background: rgba(255, 255, 255, 0.2);
+      padding: 8px 12px;
+      border-radius: 8px;
+      font-size: 0.75em;
+      backdrop-filter: blur(10px);
+      opacity: 0;
+      transition: opacity 0.3s ease;
+    }
+    .preview.drop-active .drop-hint {
+      opacity: 1;
     }
     .preview::before {
       content: '';
@@ -221,7 +254,7 @@ class RingBuilder extends LitElement {
       padding: 15px 10px;
       border: 2px solid #e0e0e0;
       border-radius: 10px;
-      cursor: pointer;
+      cursor: grab;
       text-align: center;
       transition: all 0.3s ease;
       background: #f9f9f9;
@@ -230,6 +263,14 @@ class RingBuilder extends LitElement {
       flex-direction: column;
       justify-content: center;
       align-items: center;
+      user-select: none;
+    }
+    .shape-option:active {
+      cursor: grabbing;
+    }
+    .shape-option.dragging {
+      opacity: 0.5;
+      transform: scale(0.95);
     }
     .shape-option:hover {
       border-color: #667eea;
@@ -285,6 +326,49 @@ class RingBuilder extends LitElement {
     this.price = (typePrice + shapePrice + caratPrice) * colorFactor;
   }
 
+  // Drag and drop handlers
+  handleDragStart(e, type, value) {
+    this.draggedItem = { type, value };
+    e.target.classList.add('dragging');
+    e.dataTransfer.effectAllowed = 'move';
+  }
+
+  handleDragEnd(e) {
+    e.target.classList.remove('dragging');
+    this.draggedItem = null;
+    this.dropZoneActive = false;
+  }
+
+  handleDragOver(e) {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    this.dropZoneActive = true;
+  }
+
+  handleDragLeave(e) {
+    if (e.target.classList.contains('preview')) {
+      this.dropZoneActive = false;
+    }
+  }
+
+  handleDrop(e) {
+    e.preventDefault();
+    this.dropZoneActive = false;
+
+    if (!this.draggedItem) return;
+
+    const { type, value } = this.draggedItem;
+    
+    if (type === 'shape') {
+      this.shape = value;
+      this.updatePrice();
+    } else if (type === 'metalColor') {
+      this.metalColor = value;
+    }
+
+    this.draggedItem = null;
+  }
+
   render() {
     const shapeIcons = {
       round: '💍',
@@ -309,12 +393,15 @@ class RingBuilder extends LitElement {
       </div>
 
       <div class="field">
-        <label>Metal Color:</label>
+        <label>Metal Color: <small style="opacity: 0.7;">(Click or drag to ring)</small></label>
         <div class="color-picker-wrapper">
           ${metalColors.map(metal => html`
             <div class="color-option ${this.metalColor === metal.color ? 'selected' : ''}"
                  style="background: ${metal.color};"
                  title="${metal.name}"
+                 draggable="true"
+                 @dragstart="${e => this.handleDragStart(e, 'metalColor', metal.color)}"
+                 @dragend="${e => this.handleDragEnd(e)}"
                  @click="${() => { this.metalColor = metal.color; }}">
             </div>
           `)}
@@ -326,10 +413,13 @@ class RingBuilder extends LitElement {
       </div>
 
       <div class="field">
-        <label>Diamond Shape:</label>
+        <label>Diamond Shape: <small style="opacity: 0.7;">(Click or drag to ring)</small></label>
         <div class="shape-icons">
           ${['round', 'princess', 'oval'].map(shapeType => html`
             <div class="shape-option ${this.shape === shapeType ? 'selected' : ''}"
+                 draggable="true"
+                 @dragstart="${e => this.handleDragStart(e, 'shape', shapeType)}"
+                 @dragend="${e => this.handleDragEnd(e)}"
                  @click="${() => { this.shape = shapeType; this.updatePrice(); }}">
               <div class="shape-icon">${shapeIcons[shapeType]}</div>
               <div class="shape-label">${shapeType.charAt(0).toUpperCase() + shapeType.slice(1)}</div>
@@ -355,7 +445,11 @@ class RingBuilder extends LitElement {
         </div>
       </div>
 
-      <div class="preview">
+      <div class="preview ${this.dropZoneActive ? 'drop-active' : ''}"
+           @dragover="${e => this.handleDragOver(e)}"
+           @dragleave="${e => this.handleDragLeave(e)}"
+           @drop="${e => this.handleDrop(e)}">
+        <div class="drop-hint">Drop here to apply! ✨</div>
         <div class="ring-container">
           <div class="ring-band" style="border-color: ${this.metalColor};"></div>
           <div class="ring-icon">${shapeIcons[this.shape]}</div>
