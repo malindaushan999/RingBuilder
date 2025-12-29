@@ -21,7 +21,11 @@ class RingBuilder extends LitElement {
       wishlistItems: { type: Array },
       showShareModal: { type: Boolean },
       maxPrice: { type: Number },
-      language: { type: String }
+      language: { type: String },
+      licenseKey: { type: String, attribute: 'licencekey' },
+      options: { type: Object },
+      optionsLoading: { type: Boolean },
+      optionsError: { type: String }
     };
   }
 
@@ -46,6 +50,112 @@ class RingBuilder extends LitElement {
     this.showShareModal = false;
     this.maxPrice = 50000;
     this.language = 'en';
+    this.licenseKey = '';
+    this.options = this.getDefaultOptions();
+    this.optionsLoading = false;
+    this.optionsError = '';
+  }
+
+  getDefaultOptions() {
+    return {
+      ringTypes: [
+        { value: 'engagement', label: 'Engagement Ring', emoji: '💑' },
+        { value: 'wedding', label: 'Wedding Ring', emoji: '💒' },
+        { value: 'eternity', label: 'Eternity Ring', emoji: '♾️' },
+        { value: 'promise', label: 'Promise Ring', emoji: '💝' }
+      ],
+      metalColors: [
+        { name: 'Yellow Gold', color: '#FFD700', metalType: 'yellow-gold' },
+        { name: 'White Gold', color: '#F5F5F5', metalType: 'white-gold' },
+        { name: 'Rose Gold', color: '#B76E79', metalType: 'rose-gold' },
+        { name: 'Platinum', color: '#D3D3D3', metalType: 'platinum' }
+      ],
+      shapes: [
+        { value: 'round', label: 'Round', icon: '💍' },
+        { value: 'princess', label: 'Princess', icon: '💎' },
+        { value: 'oval', label: 'Oval', icon: '✨' },
+        { value: 'emerald', label: 'Emerald', icon: '🔷' },
+        { value: 'cushion', label: 'Cushion', icon: '💠' },
+        { value: 'pear', label: 'Pear', icon: '💧' }
+      ],
+      colors: [
+        { value: 'D', label: 'D (Colorless)' },
+        { value: 'E', label: 'E (Colorless)' },
+        { value: 'F', label: 'F (Near Colorless)' },
+        { value: 'G', label: 'G (Near Colorless)' },
+        { value: 'H', label: 'H (Faint)' },
+        { value: 'I', label: 'I (Faint)' }
+      ],
+      clarities: [
+        { value: 'FL', label: 'FL (Flawless)' },
+        { value: 'IF', label: 'IF (Internally Flawless)' },
+        { value: 'VVS1', label: 'VVS1' },
+        { value: 'VVS2', label: 'VVS2' },
+        { value: 'VS1', label: 'VS1' },
+        { value: 'VS2', label: 'VS2' },
+        { value: 'SI1', label: 'SI1' },
+        { value: 'SI2', label: 'SI2' }
+      ],
+      cuts: [
+        { value: 'Excellent', label: 'Excellent' },
+        { value: 'Very Good', label: 'Very Good' },
+        { value: 'Good', label: 'Good' },
+        { value: 'Fair', label: 'Fair' }
+      ],
+      settings: [
+        { value: 'solitaire', label: 'Solitaire', emoji: '💍' },
+        { value: 'halo', label: 'Halo', emoji: '✨' },
+        { value: 'three-stone', label: 'Three Stone', emoji: '💎' },
+        { value: 'pave', label: 'Pavé', emoji: '🌟' },
+        { value: 'side-stone', label: 'Side Stone', emoji: '💠' },
+        { value: 'vintage', label: 'Vintage', emoji: '🏛️' }
+      ]
+    };
+  }
+
+  async loadDropdownOptions() {
+    this.optionsLoading = true;
+    this.optionsError = '';
+
+    try {
+      const headers = this.licenseKey ? { 'licenceKey': this.licenseKey } : undefined;
+      const response = await fetch('/api/dropdown-data', { headers });
+      if (!response.ok) {
+        throw new Error(`Request failed with status ${response.status}`);
+      }
+
+      const data = await response.json();
+      this.options = {
+        ...this.getDefaultOptions(),
+        ...data
+      };
+      this.ensureValidSelections();
+      this.updatePrice();
+    } catch (err) {
+      this.options = this.getDefaultOptions();
+      this.optionsError = 'Using default options. Unable to load data from API.';
+      console.error('Failed to load dropdown data', err);
+    } finally {
+      this.optionsLoading = false;
+    }
+  }
+
+  ensureValidSelections() {
+    const ensureValue = (current, list, fallback) => list.some(item => item.value === current) ? current : (list[0]?.value || fallback);
+
+    this.ringType = ensureValue(this.ringType, this.options.ringTypes, 'engagement');
+    this.shape = ensureValue(this.shape, this.options.shapes, 'round');
+    this.color = ensureValue(this.color, this.options.colors, 'E');
+    this.clarity = ensureValue(this.clarity, this.options.clarities, 'VS1');
+    this.cut = ensureValue(this.cut, this.options.cuts, 'Excellent');
+    this.setting = ensureValue(this.setting, this.options.settings, 'solitaire');
+
+    const matchingMetal = this.options.metalColors.find(m => m.color.toLowerCase() === this.metalColor.toLowerCase());
+    if (!matchingMetal && this.options.metalColors.length > 0) {
+      const firstMetal = this.options.metalColors[0];
+      this.metalColor = firstMetal.color;
+      this.metalType = this.getMetalType(firstMetal.color);
+    }
   }
 
   loadWishlist() {
@@ -732,6 +842,7 @@ View design: ${this.getRingImageUrl()}
   `;
 
   firstUpdated() {
+    this.loadDropdownOptions();
     this.updatePrice();
   }
 
@@ -802,23 +913,24 @@ View design: ${this.getRingImageUrl()}
   }
 
   render() {
-    const shapeIcons = {
-      round: '💍',
-      princess: '💎',
-      oval: '✨',
-      emerald: '🔷',
-      cushion: '💠',
-      pear: '💧'
-    };
-
-    const metalColors = [
-      { name: 'Yellow Gold', color: '#FFD700' },
-      { name: 'White Gold', color: '#F5F5F5' },
-      { name: 'Rose Gold', color: '#B76E79' },
-      { name: 'Platinum', color: '#D3D3D3' }
-    ];
+    const {
+      ringTypes = [],
+      metalColors = [],
+      shapes = [],
+      colors = [],
+      clarities = [],
+      cuts = [],
+      settings = []
+    } = this.options || {};
 
     return html`
+      ${this.optionsLoading ? html`
+        <div class="field" style="margin-top: 0; color: #666;">Loading options...</div>
+      ` : ''}
+      ${this.optionsError ? html`
+        <div class="field" style="margin-top: 0; color: #b55;">${this.optionsError}</div>
+      ` : ''}
+
       <!-- Language & Currency Selector -->
       <div style="display: flex; justify-content: space-between; margin-bottom: 1em;">
         <button class="secondary-btn" style="padding: 0.5em 1em;" @click="${() => this.language = this.language === 'en' ? 'es' : 'en'}">
@@ -837,10 +949,11 @@ View design: ${this.getRingImageUrl()}
       <div class="field">
         <label for="ringType">${this.getTranslation('ringType')}:</label>
         <select id="ringType" @change="${e => { this.ringType = e.target.value; this.updatePrice(); }}">
-          <option value="engagement" ?selected="${this.ringType === 'engagement'}">💑 ${this.getTranslation('engagement')}</option>
-          <option value="wedding" ?selected="${this.ringType === 'wedding'}">💒 ${this.getTranslation('wedding')}</option>
-          <option value="eternity" ?selected="${this.ringType === 'eternity'}">♾️ ${this.getTranslation('eternity')}</option>
-          <option value="promise" ?selected="${this.ringType === 'promise'}">💝 ${this.getTranslation('promise')}</option>
+          ${ringTypes.map(type => html`
+            <option value="${type.value}" ?selected="${this.ringType === type.value}">
+              ${type.emoji ? `${type.emoji} ` : ''}${type.label}
+            </option>
+          `)}
         </select>
       </div>
 
@@ -867,14 +980,14 @@ View design: ${this.getRingImageUrl()}
       <div class="field">
         <label>${this.getTranslation('shape')}: <small style="opacity: 0.7;">(${this.getTranslation('dragHint')})</small></label>
         <div class="shape-icons">
-          ${['round', 'princess', 'oval', 'emerald', 'cushion', 'pear'].map(shapeType => html`
-            <div class="shape-option ${this.shape === shapeType ? 'selected' : ''}"
+          ${shapes.map(shapeType => html`
+            <div class="shape-option ${this.shape === shapeType.value ? 'selected' : ''}"
                  draggable="true"
-                 @dragstart="${e => this.handleDragStart(e, 'shape', shapeType)}"
+                 @dragstart="${e => this.handleDragStart(e, 'shape', shapeType.value)}"
                  @dragend="${e => this.handleDragEnd(e)}"
-                 @click="${() => { this.shape = shapeType; this.updatePrice(); }}">
-              <div class="shape-icon">${shapeIcons[shapeType]}</div>
-              <div class="shape-label">${shapeType.charAt(0).toUpperCase() + shapeType.slice(1)}</div>
+                 @click="${() => { this.shape = shapeType.value; this.updatePrice(); }}">
+              <div class="shape-icon">${shapeType.icon || '💍'}</div>
+              <div class="shape-label">${shapeType.label}</div>
             </div>
           `)}
         </div>
@@ -890,12 +1003,9 @@ View design: ${this.getRingImageUrl()}
         <div>
           <label for="color">${this.getTranslation('colorGrade')}:</label>
           <select id="color" @change="${e => { this.color = e.target.value; this.updatePrice(); }}">
-            <option value="D" ?selected="${this.color === 'D'}">D (Colorless)</option>
-            <option value="E" ?selected="${this.color === 'E'}">E (Colorless)</option>
-            <option value="F" ?selected="${this.color === 'F'}">F (Near Colorless)</option>
-            <option value="G" ?selected="${this.color === 'G'}">G (Near Colorless)</option>
-            <option value="H" ?selected="${this.color === 'H'}">H (Faint)</option>
-            <option value="I" ?selected="${this.color === 'I'}">I (Faint)</option>
+            ${colors.map(color => html`
+              <option value="${color.value}" ?selected="${this.color === color.value}">${color.label}</option>
+            `)}
           </select>
         </div>
       </div>
@@ -904,23 +1014,17 @@ View design: ${this.getRingImageUrl()}
         <div>
           <label for="clarity">${this.getTranslation('clarity')}:</label>
           <select id="clarity" @change="${e => { this.clarity = e.target.value; this.updatePrice(); }}">
-            <option value="FL" ?selected="${this.clarity === 'FL'}">FL (Flawless)</option>
-            <option value="IF" ?selected="${this.clarity === 'IF'}">IF (Internally Flawless)</option>
-            <option value="VVS1" ?selected="${this.clarity === 'VVS1'}">VVS1</option>
-            <option value="VVS2" ?selected="${this.clarity === 'VVS2'}">VVS2</option>
-            <option value="VS1" ?selected="${this.clarity === 'VS1'}">VS1</option>
-            <option value="VS2" ?selected="${this.clarity === 'VS2'}">VS2</option>
-            <option value="SI1" ?selected="${this.clarity === 'SI1'}">SI1</option>
-            <option value="SI2" ?selected="${this.clarity === 'SI2'}">SI2</option>
+            ${clarities.map(clarity => html`
+              <option value="${clarity.value}" ?selected="${this.clarity === clarity.value}">${clarity.label}</option>
+            `)}
           </select>
         </div>
         <div>
           <label for="cut">${this.getTranslation('cut')}:</label>
           <select id="cut" @change="${e => { this.cut = e.target.value; this.updatePrice(); }}">
-            <option value="Excellent" ?selected="${this.cut === 'Excellent'}">Excellent</option>
-            <option value="Very Good" ?selected="${this.cut === 'Very Good'}">Very Good</option>
-            <option value="Good" ?selected="${this.cut === 'Good'}">Good</option>
-            <option value="Fair" ?selected="${this.cut === 'Fair'}">Fair</option>
+            ${cuts.map(cut => html`
+              <option value="${cut.value}" ?selected="${this.cut === cut.value}">${cut.label}</option>
+            `)}
           </select>
         </div>
       </div>
@@ -928,12 +1032,11 @@ View design: ${this.getRingImageUrl()}
       <div class="field">
         <label for="setting">${this.getTranslation('setting')}:</label>
         <select id="setting" @change="${e => { this.setting = e.target.value; this.updatePrice(); }}">
-          <option value="solitaire" ?selected="${this.setting === 'solitaire'}">💍 Solitaire</option>
-          <option value="halo" ?selected="${this.setting === 'halo'}">✨ Halo</option>
-          <option value="three-stone" ?selected="${this.setting === 'three-stone'}">💎 Three Stone</option>
-          <option value="pave" ?selected="${this.setting === 'pave'}">🌟 Pavé</option>
-          <option value="side-stone" ?selected="${this.setting === 'side-stone'}">💠 Side Stone</option>
-          <option value="vintage" ?selected="${this.setting === 'vintage'}">🏛️ Vintage</option>
+          ${settings.map(setting => html`
+            <option value="${setting.value}" ?selected="${this.setting === setting.value}">
+              ${setting.emoji ? `${setting.emoji} ` : ''}${setting.label}
+            </option>
+          `)}
         </select>
       </div>
 
